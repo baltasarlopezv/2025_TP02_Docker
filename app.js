@@ -7,13 +7,13 @@ const app = express();
 app.use(express.json());
 
 // Variables de entorno
-const PORT = process.env.PORT || 3000;
-const ENVIRONMENT = process.env.ENVIRONMENT || "QA";
-const DB_HOST = process.env.DB_HOST || "localhost";
-const DB_PORT = process.env.DB_PORT || 3306;
-const DB_USER = process.env.DB_USER || "root";
-const DB_PASSWORD = process.env.DB_PASSWORD || "password";
-const DB_NAME = process.env.DB_NAME || "dockerapp";
+const PORT = process.env.PORT;
+const ENVIRONMENT = process.env.ENVIRONMENT;
+const DB_HOST = process.env.DB_HOST;
+const DB_PORT = process.env.DB_PORT;
+const DB_USER = process.env.DB_USER;
+const DB_PASSWORD = process.env.DB_PASSWORD;
+const DB_NAME = process.env.DB_NAME;
 
 // Variable global para la conexión
 let db;
