@@ -1,6 +1,92 @@
-# 📋 Decisiones Técnicas - TP02 Docker
+# 📋 Decisiones Técnicas - TP02 Dock### **Estructura de la Aplicación**
+```javascript
+// Variables de entorno diferenciadas por entorno
+const ENVIRONMENT = process.env.ENVIRONMENT || "QA";
+```
+- **Rutas implementadas**: `/` (info general), `/health` (estado), `/data` (CRUD)
+- **Funcionalidad CRUD**: GET /data (listar), POST /data (crear registros)
+- **Conexión asíncrona** a MySQL con manejo de errores y reintentos
+- **Logs informativos** para debugging y monitoreo
+- **Dif**Resultado:**
+- Código de ~120 líneas a ~70 líneas
+- Misma demostración de conceptos Docker
+- Explicación más clara y directa
+- Cumplimiento total de requisitos del TP
 
-**Autor:** Baltasar Lopez V.  
+---
+
+## 🚀 10. Evolución hacia CRUD Funcional (v1.4 → v1.6)
+
+### **Contexto de la evolución**
+Después de la simplificación inicial, se identificó la oportunidad de agregar valor práctico sin complejidad excesiva.
+
+### **Decisión: Implementar CRUD básico pero funcional**
+
+**¿Por qué agregar funcionalidad CRUD?**
+- **Demostración práctica**: Mostrar aplicación real trabajando con datos
+- **Diferenciación verificable**: Datos específicos y aislados por entorno
+- **Persistencia demostrable**: Comprobar que los volúmenes funcionan
+- **Valor pedagógico**: Mejor comprensión de arquitecturas multi-tier
+
+### **Implementación técnica v1.6:**
+
+#### **Nuevos endpoints:**
+```javascript
+GET  /data  - Consultar todos los registros del entorno
+POST /data  - Crear nuevo registro (requiere {"message": "texto"})
+```
+
+#### **Mejoras en base de datos:**
+```sql
+-- Estructura mejorada con campo message
+CREATE TABLE connection_test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    environment VARCHAR(10),
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### **Datos iniciales diferenciados:**
+- **QA**: "Sistema QA inicializado", "Base de datos de pruebas lista"
+- **PROD**: "Sistema PROD inicializado", "Base de datos productiva lista"
+
+### **Validación funcional:**
+```bash
+# Consultar datos existentes
+curl http://localhost:3000/data  # QA → 3 registros iniciales
+curl http://localhost:3001/data  # PROD → 3 registros iniciales
+
+# Agregar datos nuevos
+curl -X POST localhost:3000/data -d '{"message":"Test QA"}'
+curl -X POST localhost:3001/data -d '{"message":"Test PROD"}'
+
+# Verificar separación: QA y PROD mantienen datos independientes
+```
+
+### **Resultados obtenidos:**
+- ✅ **API RESTful funcional** con endpoints GET/POST
+- ✅ **Separación total de datos** entre entornos
+- ✅ **Persistencia comprobada** (datos sobreviven a reinicios)
+- ✅ **Diferenciación automática** (cada ambiente marca sus registros)
+- ✅ **Manejo de errores** estructurado y informativo
+
+---
+
+## 🌐 11. Simplificación de Networking
+
+### **Decisión: Eliminar red personalizada**
+**Antes:** Red custom `app-network` definida manualmente  
+**Después:** Red automática `2025_tp02_docker_default` de Docker Compose
+
+**Beneficios:**
+- ✅ Mismo comportamiento funcional
+- ✅ Enfoque en conceptos esenciales
+- ✅ Mejor pedagogía (mostrar capacidades automáticas de Docker)
+
+---
+
+## 📖 Referenciasón automática**: Cada entorno marca sus propios registrosor:** Baltasar Lopez V.  
 **Fecha:** Septiembre 2025  
 **Curso:** Ingeniería de Software III - UCC
 
@@ -251,11 +337,11 @@ mysql-prod:
 ### **Decisión: Docker Hub con Tags Semánticos**
 
 **Tags implementados:**
-- `baltasarlopezv/tp02-docker-app:v1.1` - Versión simplificada y estable
+- `baltasarlopezv/tp02-docker-app:v1.6` - Versión actual con CRUD completo
 - `baltasarlopezv/tp02-docker-app:latest` - Más reciente
 
 **Justificación del versionado:**
-- **v1.1**: Versión simplificada - removida funcionalidad CRUD, enfoque en conectividad básica
+- **v1.6**: Versión final con funcionalidad CRUD - permite agregar y consultar datos en tiempo real
 - **latest**: Para desarrollo y testing rápido
 - **Semántico**: Seguimos convenciones de la industria
 
@@ -268,7 +354,7 @@ mysql-prod:
 ### **Actualización de docker-compose.yml**
 ```yaml
 # Antes: build: .
-image: baltasarlopezv/tp02-docker-app:v1.1
+image: baltasarlopezv/tp02-docker-app:v1.6
 ```
 
 **Ventaja:** Los usuarios no necesitan código fuente, solo el compose file.
@@ -311,10 +397,10 @@ labels:
 ### **✅ Construcción y Publicación Exitosa**
 
 ```bash
-$ docker build -t baltasarlopezv/tp02-docker-app:v1.1 .
-[+] Building 6.5s (11/11) FINISHED
-$ docker push baltasarlopezv/tp02-docker-app:v1.1
-v1.1: digest: sha256:c65d2da727d88d04dd50841a699bedbe872cbb8d993ad7c0521d6f760066d04d
+$ docker build -t baltasarlopezv/tp02-docker-app:v1.6 .
+[+] Building 1.0s (10/10) FINISHED
+$ docker push baltasarlopezv/tp02-docker-app:v1.6
+v1.6: digest: sha256:ad9a169ac1e75eafe690efc918be521b2489daa57fd3e37ed360fa4a3cab7b11
 ```
 
 ### **✅ Despliegue Multi-Entorno con Aislamiento Total**

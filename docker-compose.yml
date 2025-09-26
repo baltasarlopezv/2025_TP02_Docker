@@ -37,7 +37,7 @@ services:
 
   # Aplicación en entorno QA
   app-qa:
-    image: baltasarlopezv/tp02-docker-app:v1.4
+    image: baltasarlopezv/tp02-docker-app:v1.6
     container_name: dockerapp-qa
     restart: always
     environment:
@@ -58,7 +58,7 @@ services:
 
   # Aplicación en entorno PROD
   app-prod:
-    image: baltasarlopezv/tp02-docker-app:v1.4
+    image: baltasarlopezv/tp02-docker-app:v1.6
     container_name: dockerapp-prod
     restart: always
     environment:

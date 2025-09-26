@@ -72,6 +72,87 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Ruta para ver todos los registros de la tabla de prueba
+app.get("/data", async (req, res) => {
+  if (!db) {
+    return res.status(500).json({
+      error: "No hay conexión a la base de datos",
+      environment: ENVIRONMENT
+    });
+  }
+
+  try {
+    const [rows] = await db.execute("SELECT * FROM connection_test ORDER BY created_at DESC");
+    res.json({
+      environment: ENVIRONMENT,
+      database: `${DB_HOST}:${DB_PORT}/${DB_NAME}`,
+      total_records: rows.length,
+      data: rows
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Error consultando datos",
+      details: error.message,
+      environment: ENVIRONMENT
+    });
+  }
+});
+
+// Ruta para agregar un nuevo registro
+app.post("/data", async (req, res) => {
+  if (!db) {
+    return res.status(500).json({
+      error: "No hay conexión a la base de datos",
+      environment: ENVIRONMENT
+    });
+  }
+
+  const { message } = req.body;
+  
+  if (!message) {
+    return res.status(400).json({
+      error: "Se requiere el campo 'message' en el body",
+      example: { message: "Mi mensaje de prueba" }
+    });
+  }
+
+  try {
+    // Verificar si la columna message ya existe, si no, agregarla
+    try {
+      await db.execute(`
+        ALTER TABLE connection_test 
+        ADD COLUMN message TEXT AFTER environment
+      `);
+    } catch (alterError) {
+      // La columna probablemente ya existe, continuar
+      console.log("Columna message ya existe o error menor:", alterError.message);
+    }
+
+    const [result] = await db.execute(
+      "INSERT INTO connection_test (environment, message) VALUES (?, ?)",
+      [ENVIRONMENT, message]
+    );
+
+    res.status(201).json({
+      success: true,
+      environment: ENVIRONMENT,
+      message: "Registro creado exitosamente",
+      data: {
+        id: result.insertId,
+        environment: ENVIRONMENT,
+        message: message,
+        created_at: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Error insertando datos",
+      details: error.message,
+      environment: ENVIRONMENT
+    });
+  }
+});
+
 // Inicializar conexión a la base de datos al arrancar
 connectDB();
 

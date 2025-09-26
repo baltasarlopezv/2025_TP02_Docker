@@ -1,7 +1,22 @@
 # 🐳 TP02 Docker - Aplicación Node.js con MySQL
 
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
-![Node.js](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
+![Node.js](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badg### 6. Verificar persistencia de datos
+```bash
+# Detener contenedores
+docker-compose down
+
+# Volver a levantar
+docker-compose up -d
+
+# Verificar que los datos se mantuvieron
+curl http://localhost:3000/data | jq '.total_records'
+curl http://localhost:3001/data | jq '.total_records'
+
+# Ver datos específicos desde línea de comandos
+docker exec mysql-qa mysql -uappuser -papppassword123 -e "SELECT COUNT(*) FROM dockerapp_qa.connection_test;"
+docker exec mysql-prod mysql -uproduser -pprodpassword456 -e "SELECT COUNT(*) FROM dockerapp_prod.connection_test;"
+```js&logoColor=white)
 ![MySQL](https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white)
 
 Aplicación web containerizada con Node.js y Express que se conecta a bases de datos MySQL separadas por entorno, configurada para correr en QA y PROD con aislamiento total de datos.
@@ -119,16 +134,16 @@ docker-compose logs -f
 
 ```bash
 # Descargar imagen desde Docker Hub
-docker pull baltasarlopezv/tp02-docker-app:v1.1
+docker pull baltasarlopezv/tp02-docker-app:v1.6
 
 # Construir imagen localmente (si modificás código)
-docker build -t baltasarlopezv/tp02-docker-app:v1.1 .
+docker build -t baltasarlopezv/tp02-docker-app:v1.6 .
 
 # Ver imágenes disponibles
 docker images
 
 # Remover imagen local
-docker rmi baltasarlopezv/tp02-docker-app:v1.1
+docker rmi baltasarlopezv/tp02-docker-app:v1.6
 ```
 
 ---
@@ -141,6 +156,8 @@ docker rmi baltasarlopezv/tp02-docker-app:v1.1
 |----------|--------|-------------|
 | [http://localhost:3000](http://localhost:3000) | GET | Página principal QA con info de conexión |
 | [http://localhost:3000/health](http://localhost:3000/health) | GET | Estado de salud y conexión BD |
+| [http://localhost:3000/data](http://localhost:3000/data) | GET | Ver todos los registros de QA |
+| [http://localhost:3000/data](http://localhost:3000/data) | POST | Agregar nuevo registro en QA |
 
 ### Aplicación PROD (Puerto 3001)
 
@@ -148,6 +165,8 @@ docker rmi baltasarlopezv/tp02-docker-app:v1.1
 |----------|--------|-------------|
 | [http://localhost:3001](http://localhost:3001) | GET | Página principal PROD con info de conexión |
 | [http://localhost:3001/health](http://localhost:3001/health) | GET | Estado de salud y conexión BD |
+| [http://localhost:3001/data](http://localhost:3001/data) | GET | Ver todos los registros de PROD |
+| [http://localhost:3001/data](http://localhost:3001/data) | POST | Agregar nuevo registro en PROD |
 
 ### Base de Datos MySQL
 
@@ -162,6 +181,66 @@ docker rmi baltasarlopezv/tp02-docker-app:v1.1
 - **Usuario:** produser
 - **Contraseña:** prodpassword456
 - **Base de datos:** dockerapp_prod
+
+---
+
+## 💻 Ejemplos de Uso de la API
+
+### 📖 Ver todos los registros (GET)
+
+```bash
+# QA Environment
+curl -s http://localhost:3000/data | jq .
+
+# PROD Environment  
+curl -s http://localhost:3001/data | jq .
+
+# Ver solo la cantidad de registros
+curl -s http://localhost:3000/data | jq '.total_records'
+curl -s http://localhost:3001/data | jq '.total_records'
+
+# Ver solo los mensajes
+curl -s http://localhost:3000/data | jq '.data[].message'
+curl -s http://localhost:3001/data | jq '.data[].message'
+```
+
+### ✍️ Agregar nuevos registros (POST)
+
+```bash
+# Agregar en QA
+curl -X POST http://localhost:3000/data \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Prueba desde terminal"}'
+
+# Agregar en PROD
+curl -X POST http://localhost:3001/data \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Dato productivo importante"}'
+
+# Agregar múltiples registros en QA
+curl -X POST http://localhost:3000/data \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Primera prueba"}'
+
+curl -X POST http://localhost:3000/data \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Segunda prueba"}'
+```
+
+### 🔍 Verificar diferenciación de entornos
+
+```bash
+# Comparar cantidad de registros entre entornos
+echo "QA: $(curl -s http://localhost:3000/data | jq '.total_records') registros"
+echo "PROD: $(curl -s http://localhost:3001/data | jq '.total_records') registros"
+
+# Ver últimos 2 registros de cada entorno
+echo "=== ÚLTIMOS REGISTROS QA ==="
+curl -s http://localhost:3000/data | jq '.data[:2]'
+
+echo "=== ÚLTIMOS REGISTROS PROD ==="
+curl -s http://localhost:3001/data | jq '.data[:2]'
+```
 
 ---
 
@@ -197,7 +276,35 @@ curl http://localhost:3001/health
 # Esperado: {"status":"ok","environment":"PROD","database":"connected"}
 ```
 
-### 4. Verificar persistencia de datos
+### 4. Probar funcionalidad CRUD - Ver datos existentes
+```bash
+# Ver todos los registros en QA
+curl http://localhost:3000/data
+# Esperado: {"environment":"QA","total_records":3,"data":[...]}
+
+# Ver todos los registros en PROD  
+curl http://localhost:3001/data
+# Esperado: {"environment":"PROD","total_records":3,"data":[...]}
+```
+
+### 5. Probar funcionalidad CRUD - Agregar nuevos datos
+```bash
+# Agregar registro en QA
+curl -X POST http://localhost:3000/data \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Mi mensaje de prueba en QA"}'
+
+# Agregar registro en PROD
+curl -X POST http://localhost:3001/data \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Mi mensaje de prueba en PROD"}'
+
+# Verificar que se agregaron (deberías ver total_records incrementado)
+curl http://localhost:3000/data | jq '.total_records'
+curl http://localhost:3001/data | jq '.total_records'
+```
+
+### 6. Verificar persistencia de datos
 ```bash
 # Detener contenedores
 docker-compose down
@@ -362,8 +469,10 @@ docker volume inspect 2025_tp02_docker_mysql_prod_data
 
 ## 📈 Tags de Imagen
 
-- `baltasarlopezv/tp02-docker-app:v1.0` - Versión estable
-- `baltasarlopezv/tp02-docker-app:latest` - Última versión
+- `baltasarlopezv/tp02-docker-app:v1.6` - Versión actual con funcionalidad CRUD
+- `baltasarlopezv/tp02-docker-app:v1.5` - Versión con CRUD básico  
+- `baltasarlopezv/tp02-docker-app:v1.4` - Versión simplificada sin network
+- `baltasarlopezv/tp02-docker-app:latest` - Apunta a la última versión estable
 
 ---
 
