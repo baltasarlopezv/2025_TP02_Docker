@@ -119,16 +119,16 @@ docker-compose logs -f
 
 ```bash
 # Descargar imagen desde Docker Hub
-docker pull baltasarlopezv/tp02-docker-app:v1.0
+docker pull baltasarlopezv/tp02-docker-app:v1.1
 
 # Construir imagen localmente (si modificás código)
-docker build -t baltasarlopezv/tp02-docker-app:v1.0 .
+docker build -t baltasarlopezv/tp02-docker-app:v1.1 .
 
 # Ver imágenes disponibles
 docker images
 
 # Remover imagen local
-docker rmi baltasarlopezv/tp02-docker-app:v1.0
+docker rmi baltasarlopezv/tp02-docker-app:v1.1
 ```
 
 ---
@@ -139,19 +139,15 @@ docker rmi baltasarlopezv/tp02-docker-app:v1.0
 
 | Endpoint | Método | Descripción |
 |----------|--------|-------------|
-| [http://localhost:3000](http://localhost:3000) | GET | Página principal QA |
-| [http://localhost:3000/health](http://localhost:3000/health) | GET | Estado de salud |
-| [http://localhost:3000/messages](http://localhost:3000/messages) | GET | Mensajes de QA |
-| [http://localhost:3000/messages](http://localhost:3000/messages) | POST | Crear mensaje QA |
+| [http://localhost:3000](http://localhost:3000) | GET | Página principal QA con info de conexión |
+| [http://localhost:3000/health](http://localhost:3000/health) | GET | Estado de salud y conexión BD |
 
 ### Aplicación PROD (Puerto 3001)
 
 | Endpoint | Método | Descripción |
 |----------|--------|-------------|
-| [http://localhost:3001](http://localhost:3001) | GET | Página principal PROD |
-| [http://localhost:3001/health](http://localhost:3001/health) | GET | Estado de salud |
-| [http://localhost:3001/messages](http://localhost:3001/messages) | GET | Mensajes de PROD |
-| [http://localhost:3001/messages](http://localhost:3001/messages) | POST | Crear mensaje PROD |
+| [http://localhost:3001](http://localhost:3001) | GET | Página principal PROD con info de conexión |
+| [http://localhost:3001/health](http://localhost:3001/health) | GET | Estado de salud y conexión BD |
 
 ### Base de Datos MySQL
 
@@ -190,31 +186,18 @@ curl http://localhost:3001
 # Esperado: {"message":"Hola desde la aplicación en entorno: PROD","database":"mysql-prod:3306/dockerapp_prod",...}
 ```
 
-### 3. Verificar conexión a base de datos
+### 3. Verificar conexión a base de datos y diferenciación de entornos
 ```bash
-# Mensajes de QA
-curl http://localhost:3000/messages
-# Esperado: {"environment":"QA","messages":[...]}
+# Estado de salud QA
+curl http://localhost:3000/health
+# Esperado: {"status":"ok","environment":"QA","database":"connected"}
 
-# Mensajes de PROD
-curl http://localhost:3001/messages  
-# Esperado: {"environment":"PROD","messages":[...]}
+# Estado de salud PROD
+curl http://localhost:3001/health  
+# Esperado: {"status":"ok","environment":"PROD","database":"connected"}
 ```
 
-### 4. Probar creación de mensajes
-```bash
-# Crear mensaje en QA
-curl -X POST http://localhost:3000/messages \
-  -H "Content-Type: application/json" \
-  -d '{"content":"Test desde QA"}'
-
-# Crear mensaje en PROD
-curl -X POST http://localhost:3001/messages \
-  -H "Content-Type: application/json" \
-  -d '{"content":"Test desde PROD"}'
-```
-
-### 5. Verificar persistencia de datos
+### 4. Verificar persistencia de datos
 ```bash
 # Detener contenedores
 docker-compose down
@@ -222,9 +205,9 @@ docker-compose down
 # Volver a levantar
 docker-compose up -d
 
-# Verificar que los datos se mantuvieron
-curl http://localhost:3000/messages
-curl http://localhost:3001/messages
+# Verificar que los datos se mantuvieron (las tablas de prueba siguen existiendo)
+docker exec mysql-qa mysql -uappuser -papppassword123 -e "SELECT * FROM dockerapp_qa.connection_test;"
+docker exec mysql-prod mysql -uproduser -pprodpassword456 -e "SELECT * FROM dockerapp_prod.connection_test;"
 ```
 
 ---

@@ -1,23 +1,17 @@
--- init-qa.sql - Script de inicialización para QA
--- Este script se ejecuta automáticamente cuando MySQL QA arranca por primera vez
+-- init-qa.sql - Script simple para QA
+-- Este script se ejecuta automáticamente cuando MySQL QA arranca
 
 USE dockerapp_qa;
 
--- Crear tabla messages si no existe
-CREATE TABLE IF NOT EXISTS messages (
+-- Crear una tabla simple solo para demostrar conexión
+CREATE TABLE IF NOT EXISTS connection_test (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    content TEXT NOT NULL,
-    environment VARCHAR(10) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_environment (environment)
+    environment VARCHAR(10) DEFAULT 'QA',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insertar datos específicos de QA
-INSERT INTO messages (content, environment) VALUES 
-('¡Bienvenido al entorno QA!', 'QA'),
-('Sistema de pruebas funcionando', 'QA'),
-('Base de datos QA inicializada', 'QA'),
-('Entorno de testing listo', 'QA');
+-- Insertar registro de prueba
+INSERT INTO connection_test (environment) VALUES ('QA');
 
 -- Mostrar confirmación
-SELECT 'Base de datos QA inicializada correctamente' as status;
+SELECT 'Base de datos QA lista' as status;

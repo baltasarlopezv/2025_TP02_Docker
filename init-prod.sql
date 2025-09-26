@@ -1,23 +1,17 @@
--- init-prod.sql - Script de inicialización para PRODUCCIÓN
--- Este script se ejecuta automáticamente cuando MySQL PROD arranca por primera vez
+-- init-prod.sql - Script simple para PROD
+-- Este script se ejecuta automáticamente cuando MySQL PROD arranca
 
 USE dockerapp_prod;
 
--- Crear tabla messages si no existe
-CREATE TABLE IF NOT EXISTS messages (
+-- Crear una tabla simple solo para demostrar conexión
+CREATE TABLE IF NOT EXISTS connection_test (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    content TEXT NOT NULL,
-    environment VARCHAR(10) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_environment (environment)
+    environment VARCHAR(10) DEFAULT 'PROD',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insertar datos específicos de PRODUCCIÓN
-INSERT INTO messages (content, environment) VALUES 
-('¡Aplicación en producción!', 'PROD'),
-('Sistema productivo estable', 'PROD'),
-('Base de datos PROD inicializada', 'PROD'),
-('Entorno productivo funcionando', 'PROD');
+-- Insertar registro de prueba
+INSERT INTO connection_test (environment) VALUES ('PROD');
 
 -- Mostrar confirmación
-SELECT 'Base de datos PROD inicializada correctamente' as status;
+SELECT 'Base de datos PROD lista' as status;

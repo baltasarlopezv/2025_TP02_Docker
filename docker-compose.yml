@@ -18,10 +18,6 @@ services:
       - ./init-qa.sql:/docker-entrypoint-initdb.d/init-qa.sql:ro
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
 
   # Base de datos MySQL para PROD
   mysql-prod:
@@ -42,14 +38,10 @@ services:
       - ./init-prod.sql:/docker-entrypoint-initdb.d/init-prod.sql:ro
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
 
   # Aplicación en entorno QA
   app-qa:
-    image: baltasarlopezv/tp02-docker-app:v1.0
+    image: baltasarlopezv/tp02-docker-app:v1.1
     container_name: dockerapp-qa
     restart: always
     environment:
@@ -63,8 +55,7 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      mysql-qa:
-        condition: service_healthy
+      - mysql-qa
     networks:
       - app-network
     labels:
@@ -73,7 +64,7 @@ services:
 
   # Aplicación en entorno PROD
   app-prod:
-    image: baltasarlopezv/tp02-docker-app:v1.0
+    image: baltasarlopezv/tp02-docker-app:v1.1
     container_name: dockerapp-prod
     restart: always
     environment:
@@ -87,8 +78,7 @@ services:
     ports:
       - "3001:3000"  # Puerto externo 3001, interno 3000
     depends_on:
-      mysql-prod:
-        condition: service_healthy
+      - mysql-prod
     networks:
       - app-network
     labels:

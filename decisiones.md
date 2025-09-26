@@ -39,9 +39,10 @@ Este proyecto implementa una aplicación web containerizada usando Docker, dise�
 // Variables de entorno diferenciadas por entorno
 const ENVIRONMENT = process.env.ENVIRONMENT || "QA";
 ```
-- **Rutas implementadas**: `/`, `/health`, `/messages` (GET/POST)
+- **Rutas implementadas**: `/` (info general), `/health` (estado y conexión)
 - **Conexión asíncrona** a MySQL con manejo de errores
 - **Logs informativos** para debugging y monitoreo
+- **Enfoque simplificado**: Demostración de conectividad sin complejidad innecesaria
 
 ---
 
@@ -250,11 +251,11 @@ mysql-prod:
 ### **Decisión: Docker Hub con Tags Semánticos**
 
 **Tags implementados:**
-- `baltasarlopezv/tp02-docker-app:v1.0` - Versión estable
+- `baltasarlopezv/tp02-docker-app:v1.1` - Versión simplificada y estable
 - `baltasarlopezv/tp02-docker-app:latest` - Más reciente
 
 **Justificación del versionado:**
-- **v1.0**: Primera versión estable y funcional completa
+- **v1.1**: Versión simplificada - removida funcionalidad CRUD, enfoque en conectividad básica
 - **latest**: Para desarrollo y testing rápido
 - **Semántico**: Seguimos convenciones de la industria
 
@@ -267,7 +268,7 @@ mysql-prod:
 ### **Actualización de docker-compose.yml**
 ```yaml
 # Antes: build: .
-image: baltasarlopezv/tp02-docker-app:v1.0
+image: baltasarlopezv/tp02-docker-app:v1.1
 ```
 
 **Ventaja:** Los usuarios no necesitan código fuente, solo el compose file.
@@ -310,10 +311,10 @@ labels:
 ### **✅ Construcción y Publicación Exitosa**
 
 ```bash
-$ docker build -t baltasarlopezv/tp02-docker-app:v1.0 .
-[+] Building 1.6s (11/11) FINISHED
-$ docker push baltasarlopezv/tp02-docker-app:v1.0
-v1.0: digest: sha256:946323a3ae4b8c5d85ff166f40565990706036a27f8c5655232420f04b7c5d3b
+$ docker build -t baltasarlopezv/tp02-docker-app:v1.1 .
+[+] Building 6.5s (11/11) FINISHED
+$ docker push baltasarlopezv/tp02-docker-app:v1.1
+v1.1: digest: sha256:c65d2da727d88d04dd50841a699bedbe872cbb8d993ad7c0521d6f760066d04d
 ```
 
 ### **✅ Despliegue Multi-Entorno con Aislamiento Total**
@@ -448,7 +449,33 @@ En un entorno real, implementaría:
 
 ---
 
-## 📖 Referencias
+## � 9. Decisión de Simplificación (v1.1)
+
+### **Contexto**
+Inicialmente el proyecto incluía funcionalidad CRUD completa con tabla `messages` y endpoints para crear/obtener mensajes. Sin embargo, al revisar los requisitos específicos del TP, se identificó que esta complejidad no era necesaria.
+
+### **Decisión: Simplificar a Conectividad Básica**
+
+**¿Por qué simplificar?**
+- **Enfoque en lo esencial**: El TP requiere demostrar containerización y diferenciación de entornos, no funcionalidad compleja
+- **Mejor para defensa oral**: Código más simple es más fácil de explicar y entender
+- **Cumplimiento directo**: Satisface todos los requisitos sin complejidad innecesaria
+
+**Cambios implementados en v1.1:**
+- ✅ **Eliminación de rutas CRUD**: Removidas rutas `/messages` POST y GET complejas
+- ✅ **Simplificación de BD**: Tabla `connection_test` básica en lugar de `messages` compleja
+- ✅ **Endpoints core mantenidos**: `/` (info general) y `/health` (estado)
+- ✅ **Funcionalidad principal preservada**: Diferenciación de entornos, conexión BD, persistencia
+
+**Resultado:**
+- Código de ~120 líneas a ~70 líneas
+- Misma demostración de conceptos Docker
+- Explicación más clara y directa
+- Cumplimiento total de requisitos del TP
+
+---
+
+## �📖 Referencias
 
 - [Docker Official Documentation](https://docs.docker.com/)
 - [Docker Compose File Reference](https://docs.docker.com/compose/compose-file/)
