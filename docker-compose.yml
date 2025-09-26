@@ -16,8 +16,6 @@ services:
       - mysql_qa_data:/var/lib/mysql
       # Script de inicialización QA
       - ./init-qa.sql:/docker-entrypoint-initdb.d/init-qa.sql:ro
-    networks:
-      - app-network
 
   # Base de datos MySQL para PROD
   mysql-prod:
@@ -36,12 +34,10 @@ services:
       - mysql_prod_data:/var/lib/mysql
       # Script de inicialización PROD
       - ./init-prod.sql:/docker-entrypoint-initdb.d/init-prod.sql:ro
-    networks:
-      - app-network
 
   # Aplicación en entorno QA
   app-qa:
-    image: baltasarlopezv/tp02-docker-app:v1.3
+    image: baltasarlopezv/tp02-docker-app:v1.4
     container_name: dockerapp-qa
     restart: always
     environment:
@@ -56,15 +52,13 @@ services:
       - "3000:3000"
     depends_on:
       - mysql-qa
-    networks:
-      - app-network
     labels:
       - "environment=qa"
       - "app=dockerapp"
 
   # Aplicación en entorno PROD
   app-prod:
-    image: baltasarlopezv/tp02-docker-app:v1.3
+    image: baltasarlopezv/tp02-docker-app:v1.4
     container_name: dockerapp-prod
     restart: always
     environment:
@@ -79,8 +73,6 @@ services:
       - "3001:3000"  # Puerto externo 3001, interno 3000
     depends_on:
       - mysql-prod
-    networks:
-      - app-network
     labels:
       - "environment=prod"
       - "app=dockerapp"
@@ -91,8 +83,3 @@ volumes:
     driver: local
   mysql_prod_data:
     driver: local
-
-# Red personalizada para que los contenedores se comuniquen
-networks:
-  app-network:
-    driver: bridge
