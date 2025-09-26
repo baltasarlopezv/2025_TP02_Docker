@@ -18,22 +18,37 @@ const DB_NAME = process.env.DB_NAME;
 // Variable global para la conexión
 let db;
 
-// Función para conectar a la base de datos
+// Función para conectar a la base de datos con reintentos
 async function connectDB() {
-  try {
-    const dbConfig = {
-      host: DB_HOST,
-      port: DB_PORT,
-      user: DB_USER,
-      password: DB_PASSWORD,
-      database: DB_NAME,
-    };
-    
-    db = await mysql.createConnection(dbConfig);
-    console.log(`✅ Conectado a MySQL en ${DB_HOST}:${DB_PORT}/${DB_NAME}`);
-  } catch (error) {
-    console.error("❌ Error conectando a MySQL:", error.message);
-    // No falla la app, solo no tendrá conexión BD
+  const maxRetries = 5;
+  const retryDelay = 3000; // 3 segundos
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const dbConfig = {
+        host: DB_HOST,
+        port: DB_PORT,
+        user: DB_USER,
+        password: DB_PASSWORD,
+        database: DB_NAME,
+      };
+      
+      db = await mysql.createConnection(dbConfig);
+      console.log(`✅ Conectado a MySQL en ${DB_HOST}:${DB_PORT}/${DB_NAME}`);
+      return; // Conexión exitosa, salir de la función
+      
+    } catch (error) {
+      console.error(`❌ Intento ${attempt}/${maxRetries} - Error conectando a MySQL:`, error.message);
+      
+      if (attempt === maxRetries) {
+        console.error('💥 No se pudo conectar a MySQL después de varios intentos');
+        // No falla la app, solo no tendrá conexión BD
+        return;
+      }
+      
+      console.log(`⏳ Reintentando en ${retryDelay/1000} segundos...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
   }
 }
 
