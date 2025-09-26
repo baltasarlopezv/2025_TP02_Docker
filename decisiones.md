@@ -10,8 +10,9 @@
 
 Este proyecto implementa una aplicación web containerizada usando Docker, diseñada para demostrar conceptos clave como:
 - Containerización de aplicaciones
-- Configuración multi-entorno (QA/PROD)
-- Persistencia de datos con volúmenes
+- **Aislamiento total de bases de datos por entorno**
+- Configuración multi-entorno (QA/PROD) con recursos dedicados
+- Persistencia de datos con volúmenes independientes
 - Orquestación con Docker Compose
 - Publicación en registries públicos
 
@@ -81,43 +82,64 @@ CMD ["npm", "start"]
 
 ## 🗄️ 3. Elección de Base de Datos
 
-### **Decisión: MySQL 8.0**
+### **Decisión: MySQL 8.0 con Bases de Datos Separadas por Entorno**
 
 **Justificación técnica:**
 - **Estabilidad probada**: MySQL es una BD madura y confiable
 - **Ecosistema Docker**: Imagen oficial bien mantenida con healthchecks
 - **Facilidad de configuración**: Variables de entorno simples
 - **Compatibilidad**: Driver mysql2 para Node.js muy estable
+- **Aislamiento total**: QA y PROD completamente independientes
 
-**¿Por qué no otras bases de datos?**
-- **PostgreSQL**: Más compleja para un caso de uso simple
-- **MongoDB**: No necesitamos documentos, estructura relacional simple es suficiente
-- **SQLite**: No permite conexiones concurrentes reales entre contenedores
+**¿Por qué bases separadas en lugar de una compartida?**
+- **Aislamiento**: Errores en QA no pueden afectar datos de PROD
+- **Seguridad**: Credenciales diferentes por entorno
+- **Performance**: Cada entorno tiene recursos dedicados
+- **Realismo**: Simula arquitectura productiva real
 
-### **Configuración de MySQL**
+### **Configuración de MySQL por Entorno**
+
+**QA Environment:**
 ```yaml
-environment:
-  MYSQL_ROOT_PASSWORD: rootpassword123
-  MYSQL_DATABASE: dockerapp
-  MYSQL_USER: appuser
-  MYSQL_PASSWORD: apppassword123
+mysql-qa:
+  environment:
+    MYSQL_ROOT_PASSWORD: rootpassword123
+    MYSQL_DATABASE: dockerapp_qa
+    MYSQL_USER: appuser
+    MYSQL_PASSWORD: apppassword123
+  ports:
+    - "3306:3306"
+```
+
+**PROD Environment:**
+```yaml
+mysql-prod:
+  environment:
+    MYSQL_ROOT_PASSWORD: rootpassword456
+    MYSQL_DATABASE: dockerapp_prod  
+    MYSQL_USER: produser
+    MYSQL_PASSWORD: prodpassword456
+  ports:
+    - "3307:3306"  # Puerto externo diferente
 ```
 
 **Decisiones de seguridad:**
-- Usuario dedicado (`appuser`) en lugar de usar root
-- Contraseñas fuertes para entorno de producción
-- Base de datos específica para la aplicación
+- **Usuarios dedicados por entorno**: `appuser` vs `produser`
+- **Contraseñas diferentes**: Simula gestión de secretos real
+- **Puertos diferenciados**: QA (3306) vs PROD (3307)
+- **Bases de datos específicas**: `dockerapp_qa` vs `dockerapp_prod`
 
 ---
 
 ## 🏗️ 4. Arquitectura Docker Compose
 
-### **Decisión: Arquitectura Multi-Servicio**
+### **Decisión: Arquitectura Multi-Servicio con Aislamiento Total**
 
 **Servicios implementados:**
-1. **mysql**: Base de datos compartida
-2. **app-qa**: Aplicación en entorno QA (puerto 3000)
-3. **app-prod**: Aplicación en entorno PROD (puerto 3001)
+1. **mysql-qa**: Base de datos exclusiva para QA
+2. **mysql-prod**: Base de datos exclusiva para PROD  
+3. **app-qa**: Aplicación en entorno QA (puerto 3000)
+4. **app-prod**: Aplicación en entorno PROD (puerto 3001)
 
 ### **Red y Comunicación**
 ```yaml
@@ -131,18 +153,20 @@ networks:
 - **Resolución DNS**: Los servicios se comunican por nombre (`mysql`)
 - **Seguridad**: Solo los servicios definidos pueden comunicarse
 
-### **Healthcheck de MySQL**
+### **Healthcheck Individual por BD**
 ```yaml
-healthcheck:
-  test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-  timeout: 20s
-  retries: 10
+mysql-qa:
+  healthcheck:
+    test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+mysql-prod:  
+  healthcheck:
+    test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
 ```
 
 **Justificación:**
-- **Dependencias ordenadas**: Las apps esperan a que MySQL esté listo
-- **Tolerancia a fallas**: Reintentos automáticos si MySQL tarda en arrancar
-- **Monitoreo**: Docker Compose reporta el estado real de MySQL
+- **Dependencias ordenadas**: Cada app espera a su BD específica
+- **Tolerancia a fallas**: Si falla QA, PROD sigue funcionando
+- **Monitoreo granular**: Estado independiente por servicio
 
 ---
 
@@ -150,16 +174,18 @@ healthcheck:
 
 ### **Decisión: Misma Imagen, Variables de Entorno Diferentes**
 
-**Implementación:**
+**Implementación por entorno:**
 ```yaml
 app-qa:
   environment:
     - ENVIRONMENT=QA
-    - PORT=3000
+    - DB_HOST=mysql-qa      # Conexión dedicada
+    - DB_NAME=dockerapp_qa  # BD específica
 app-prod:
   environment:
     - ENVIRONMENT=PROD
-    - PORT=3000  # Puerto interno igual
+    - DB_HOST=mysql-prod    # Conexión dedicada  
+    - DB_NAME=dockerapp_prod # BD específica
   ports:
     - "3001:3000"  # Puerto externo diferente
 ```
@@ -169,47 +195,53 @@ app-prod:
 - **Deployments consistentes**: Lo que funciona en QA funciona en PROD
 - **Variables claras**: Fácil identificar diferencias de configuración
 - **Escalabilidad**: Fácil agregar más entornos (staging, dev)
+- **Aislamiento total**: Bases de datos completamente separadas
 
-### **Diferenciación de Datos**
+### **Diferenciación de Datos por Entorno**
 ```javascript
-const initialMessage = ENVIRONMENT === "PROD" 
-  ? "Aplicación en producción funcionando correctamente"
-  : "Aplicación en QA - Entorno de pruebas";
+// Cada entorno tiene su propia base de datos
+const DB_NAME = process.env.DB_NAME; // dockerapp_qa vs dockerapp_prod
+const DB_HOST = process.env.DB_HOST; // mysql-qa vs mysql-prod
 ```
 
-**¿Por qué datos diferentes por entorno?**
-- **Testing realista**: QA tiene datos de prueba, PROD datos reales
-- **Identificación clara**: Es obvio en qué entorno estás trabajando
-- **Troubleshooting**: Logs y mensajes identifican el entorno automáticamente
+**Scripts de inicialización separados:**
+- `init-qa.sql`: Datos específicos para testing
+- `init-prod.sql`: Datos específicos para producción
 
 ---
 
 ## 💾 6. Estrategia de Persistencia de Datos
 
-### **Decisión: Volúmenes Docker Named**
+### **Decisión: Volúmenes Docker Named Separados**
 
 ```yaml
 volumes:
-  mysql_data:
+  mysql_qa_data:
+    driver: local
+  mysql_prod_data:
     driver: local
 ```
 
-**¿Por qué volúmenes named vs bind mounts?**
+**¿Por qué volúmenes separados?**
+- **Aislamiento total**: Los datos de QA no pueden afectar PROD
+- **Backup independiente**: Se puede hacer respaldo por entorno
+- **Gestión granular**: Cada entorno se puede limpiar independientemente
 - **Portabilidad**: Funcionan igual en Windows, Mac y Linux
-- **Performance**: Docker optimiza el acceso a datos
-- **Gestión automática**: Docker maneja permisos y ubicación
-- **Backup simplificado**: `docker volume` commands para respaldo
 
-### **Script de Inicialización**
+### **Scripts de Inicialización Específicos**
 ```yaml
-volumes:
-  - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+mysql-qa:
+  volumes:
+    - ./init-qa.sql:/docker-entrypoint-initdb.d/init-qa.sql:ro
+mysql-prod:
+  volumes:
+    - ./init-prod.sql:/docker-entrypoint-initdb.d/init-prod.sql:ro
 ```
 
 **Justificación:**
-- **Reproducibilidad**: Cualquier persona obtiene los mismos datos iniciales
-- **Automatización**: No hay pasos manuales para configurar la BD
-- **Separación de entornos**: QA y PROD tienen datos diferenciados automáticamente
+- **Datos apropiados por entorno**: QA tiene datos de testing, PROD datos productivos
+- **Reproducibilidad**: Cualquier persona obtiene exactamente los mismos datos
+- **Automatización**: No hay pasos manuales para configurar las BDs
 
 ---
 
@@ -261,9 +293,15 @@ labels:
 - **Automatización**: Scripts pueden usar labels para operaciones batch
 
 ### **Port Mapping Strategy**
-- **QA**: 3000:3000 (directo)
-- **PROD**: 3001:3000 (mapeado)
-- **MySQL**: 3306:3306 (para debugging/herramientas externas)
+- **QA App**: 3000:3000 (directo)
+- **PROD App**: 3001:3000 (mapeado)
+- **QA MySQL**: 3306:3306 (puerto estándar)
+- **PROD MySQL**: 3307:3306 (puerto alternativo)
+
+**Ventajas:**
+- **Acceso simultáneo**: Todos los servicios accesibles al mismo tiempo
+- **Sin conflictos**: Cada servicio tiene su puerto único
+- **Herramientas externas**: Se puede conectar DBeaver, etc. a cada BD
 
 ---
 
@@ -278,26 +316,26 @@ $ docker push baltasarlopezv/tp02-docker-app:v1.0
 v1.0: digest: sha256:946323a3ae4b8c5d85ff166f40565990706036a27f8c5655232420f04b7c5d3b
 ```
 
-### **✅ Despliegue Multi-Entorno Funcional**
+### **✅ Despliegue Multi-Entorno con Aislamiento Total**
 
 ```bash
 $ docker-compose up -d
-[+] Running 4/4
- ✔ Network app-network    Created
- ✔ Container mysql-db     Healthy
- ✔ Container dockerapp-qa Started  
- ✔ Container dockerapp-prod Started
+[+] Running 5/5
+ ✔ Network app-network       Created
+ ✔ Container mysql-qa        Healthy  
+ ✔ Container mysql-prod      Healthy
+ ✔ Container dockerapp-qa    Started  
+ ✔ Container dockerapp-prod  Started
 ```
 
-### **✅ Conectividad y Diferenciación de Entornos**
+### **✅ Conectividad y Diferenciación Completa**
 
 **QA Response:**
 ```json
 {
   "message": "Hola desde la aplicación en entorno: QA",
-  "port": "3000",
-  "database": "mysql:3306/dockerapp",
-  "timestamp": "2025-09-25T02:15:12.589Z"
+  "database": "mysql-qa:3306/dockerapp_qa",
+  "timestamp": "2025-09-26T16:46:37.741Z"
 }
 ```
 
@@ -305,32 +343,35 @@ $ docker-compose up -d
 ```json
 {
   "message": "Hola desde la aplicación en entorno: PROD",
-  "port": "3000", 
-  "database": "mysql:3306/dockerapp",
-  "timestamp": "2025-09-25T02:15:23.674Z"
+  "database": "mysql-prod:3306/dockerapp_prod", 
+  "timestamp": "2025-09-26T16:46:46.572Z"
 }
 ```
 
-### **✅ Persistencia de Datos Verificada**
+### **✅ Aislamiento de Datos Comprobado**
 
-**QA Messages:**
+**QA Messages (mysql-qa:dockerapp_qa):**
 ```json
 {
   "environment": "QA",
   "messages": [
     {"id": 1, "content": "¡Bienvenido al entorno QA!", "environment": "QA"},
-    {"id": 2, "content": "Sistema de pruebas funcionando", "environment": "QA"}
+    {"id": 2, "content": "Sistema de pruebas funcionando", "environment": "QA"},
+    {"id": 3, "content": "Base de datos QA inicializada", "environment": "QA"},
+    {"id": 4, "content": "Entorno de testing listo", "environment": "QA"}
   ]
 }
 ```
 
-**PROD Messages:**
+**PROD Messages (mysql-prod:dockerapp_prod):**
 ```json
 {
-  "environment": "PROD", 
+  "environment": "PROD",
   "messages": [
-    {"id": 3, "content": "¡Aplicación en producción!", "environment": "PROD"},
-    {"id": 4, "content": "Sistema productivo estable", "environment": "PROD"}
+    {"id": 1, "content": "¡Aplicación en producción!", "environment": "PROD"},
+    {"id": 2, "content": "Sistema productivo estable", "environment": "PROD"},
+    {"id": 3, "content": "Base de datos PROD inicializada", "environment": "PROD"},
+    {"id": 4, "content": "Entorno productivo funcionando", "environment": "PROD"}
   ]
 }
 ```
@@ -389,9 +430,14 @@ depends_on:
 
 ### **¿Qué aprendí?**
 - Docker Compose simplifica enormemente el manejo de aplicaciones multi-servicio
-- La separación de configuración por entorno es clave para operaciones
+- **El aislamiento de bases de datos es clave para entornos reales**
 - Los volúmenes Docker son más robustos que los bind mounts
 - La publicación en registries públicos hace el proyecto verdaderamente portable
+- **Cada entorno debe tener recursos dedicados para simular producción**
+
+### **Evolución del proyecto:**
+**Versión inicial:** 1 BD compartida → Simpler, menos realista
+**Versión final:** BDs separadas → Más complejo, más realista y profesional
 
 ### **Siguiente Paso Sugerido**
 En un entorno real, implementaría:

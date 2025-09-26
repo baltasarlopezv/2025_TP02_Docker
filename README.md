@@ -4,7 +4,7 @@
 ![Node.js](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
 ![MySQL](https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white)
 
-Aplicación web containerizada con Node.js y Express que se conecta a una base de datos MySQL, configurada para correr en dos entornos diferentes (QA y PROD) usando Docker Compose.
+Aplicación web containerizada con Node.js y Express que se conecta a bases de datos MySQL separadas por entorno, configurada para correr en QA y PROD con aislamiento total de datos.
 
 ## 📋 Contenido
 
@@ -48,7 +48,7 @@ docker-compose up -d
 
 ### 3. Verificar que está funcionando
 ```bash
-# Ver contenedores en ejecución
+# Ver contenedores en ejecución (deberías ver 4: 2 apps + 2 MySQL)
 docker ps
 
 # Probar endpoint QA
@@ -74,9 +74,12 @@ docker-compose up -d
 # Reconstruir imágenes y levantar
 docker-compose up --build
 
-# Levantar solo un servicio específico
-docker-compose up mysql
-docker-compose up app-qa
+```bash
+# Levantar solo servicios específicos
+docker-compose up mysql-qa mysql-prod  # Solo las bases de datos
+docker-compose up app-qa               # Solo QA
+docker-compose up app-prod             # Solo PROD
+```
 ```
 
 ### Detener servicios
@@ -101,9 +104,12 @@ docker ps
 # Ver logs de todos los servicios
 docker-compose logs
 
-# Ver logs de un servicio específico
+```bash
+# Ver logs de servicios específicos
 docker-compose logs app-qa
-docker-compose logs mysql
+docker-compose logs app-prod
+docker-compose logs mysql-qa
+docker-compose logs mysql-prod
 
 # Seguir logs en tiempo real
 docker-compose logs -f
@@ -147,12 +153,19 @@ docker rmi baltasarlopezv/tp02-docker-app:v1.0
 | [http://localhost:3001/messages](http://localhost:3001/messages) | GET | Mensajes de PROD |
 | [http://localhost:3001/messages](http://localhost:3001/messages) | POST | Crear mensaje PROD |
 
-### Base de Datos MySQL (Puerto 3306)
+### Base de Datos MySQL
 
+#### QA Environment (Puerto 3306)
 - **Host:** localhost:3306
 - **Usuario:** appuser
 - **Contraseña:** apppassword123
-- **Base de datos:** dockerapp
+- **Base de datos:** dockerapp_qa
+
+#### PROD Environment (Puerto 3307) 
+- **Host:** localhost:3307
+- **Usuario:** produser
+- **Contraseña:** prodpassword456
+- **Base de datos:** dockerapp_prod
 
 ---
 
@@ -162,17 +175,19 @@ docker rmi baltasarlopezv/tp02-docker-app:v1.0
 ```bash
 docker ps
 ```
-**Esperado:** 3 contenedores en estado "Up" (mysql-db, dockerapp-qa, dockerapp-prod)
+**Esperado:** 4 contenedores en estado "Up": 
+- `mysql-qa`, `mysql-prod` (bases de datos)
+- `dockerapp-qa`, `dockerapp-prod` (aplicaciones)
 
 ### 2. Probar endpoints principales
 ```bash
 # QA
 curl http://localhost:3000
-# Esperado: {"message":"Hola desde la aplicación en entorno: QA",...}
+# Esperado: {"message":"Hola desde la aplicación en entorno: QA","database":"mysql-qa:3306/dockerapp_qa",...}
 
 # PROD  
 curl http://localhost:3001
-# Esperado: {"message":"Hola desde la aplicación en entorno: PROD",...}
+# Esperado: {"message":"Hola desde la aplicación en entorno: PROD","database":"mysql-prod:3306/dockerapp_prod",...}
 ```
 
 ### 3. Verificar conexión a base de datos
@@ -219,9 +234,13 @@ curl http://localhost:3001/messages
 ### Acceder a un contenedor
 
 ```bash
-# Acceder al contenedor de MySQL
-docker exec -it mysql-db bash
-mysql -u appuser -p dockerapp
+# Acceder al contenedor de MySQL QA
+docker exec -it mysql-qa bash
+mysql -u appuser -p dockerapp_qa
+
+# Acceder al contenedor de MySQL PROD  
+docker exec -it mysql-prod bash
+mysql -u produser -p dockerapp_prod
 
 # Acceder al contenedor de la aplicación
 docker exec -it dockerapp-qa sh
@@ -231,9 +250,11 @@ docker exec -it dockerapp-prod sh
 ### Reiniciar servicios
 
 ```bash
-# Reiniciar un servicio específico
+# Reiniciar servicios específicos
 docker-compose restart app-qa
-docker-compose restart mysql
+docker-compose restart app-prod
+docker-compose restart mysql-qa
+docker-compose restart mysql-prod
 
 # Reiniciar todos los servicios
 docker-compose restart
@@ -265,10 +286,11 @@ docker system prune -a --volumes
 ├── package.json        # Dependencias de Node.js
 ├── Dockerfile          # Instrucciones para construir imagen
 ├── docker-compose.yml  # Configuración multi-servicio
-├── init.sql           # Script de inicialización MySQL
-├── .dockerignore      # Archivos ignorados por Docker
-├── README.md          # Este archivo
-└── decisiones.md      # Justificaciones técnicas
+├── init-qa.sql         # Script de inicialización MySQL QA
+├── init-prod.sql       # Script de inicialización MySQL PROD
+├── .dockerignore       # Archivos ignorados por Docker
+├── README.md           # Este archivo
+└── decisiones.md       # Justificaciones técnicas
 ```
 
 ---
@@ -281,20 +303,29 @@ docker system prune -a --volumes
 |----------|-----|------|-------------|
 | `PORT` | 3000 | 3000 | Puerto interno del contenedor |
 | `ENVIRONMENT` | QA | PROD | Entorno de ejecución |
-| `DB_HOST` | mysql | mysql | Host de la base de datos |
+| `DB_HOST` | mysql-qa | mysql-prod | Host de la base de datos |
 | `DB_PORT` | 3306 | 3306 | Puerto de MySQL |
-| `DB_USER` | appuser | appuser | Usuario de base de datos |
-| `DB_PASSWORD` | apppassword123 | apppassword123 | Contraseña de BD |
-| `DB_NAME` | dockerapp | dockerapp | Nombre de la base de datos |
+| `DB_USER` | appuser | produser | Usuario de base de datos |
+| `DB_PASSWORD` | apppassword123 | prodpassword456 | Contraseña de BD |
+| `DB_NAME` | dockerapp_qa | dockerapp_prod | Nombre de la base de datos |
 
-### MySQL
+### MySQL QA
 
 | Variable | Valor | Descripción |
 |----------|-------|-------------|
 | `MYSQL_ROOT_PASSWORD` | rootpassword123 | Contraseña del usuario root |
-| `MYSQL_DATABASE` | dockerapp | Base de datos a crear |
+| `MYSQL_DATABASE` | dockerapp_qa | Base de datos a crear |
 | `MYSQL_USER` | appuser | Usuario de aplicación |
 | `MYSQL_PASSWORD` | apppassword123 | Contraseña del usuario |
+
+### MySQL PROD
+
+| Variable | Valor | Descripción |
+|----------|-------|-------------|
+| `MYSQL_ROOT_PASSWORD` | rootpassword456 | Contraseña del usuario root |
+| `MYSQL_DATABASE` | dockerapp_prod | Base de datos a crear |
+| `MYSQL_USER` | produser | Usuario de aplicación |
+| `MYSQL_PASSWORD` | prodpassword456 | Contraseña del usuario |
 
 ---
 
@@ -313,23 +344,26 @@ docker-compose down
 
 ### Error: "Cannot connect to MySQL"
 ```bash
-# Verificar que MySQL esté healthy
+# Verificar que ambos MySQL estén healthy
 docker ps
 
-# Ver logs de MySQL
-docker-compose logs mysql
+# Ver logs específicos
+docker-compose logs mysql-qa
+docker-compose logs mysql-prod
 
-# Reiniciar MySQL
-docker-compose restart mysql
+# Reiniciar MySQL específico
+docker-compose restart mysql-qa
+docker-compose restart mysql-prod
 ```
 
 ### Los datos se perdieron
 ```bash
-# Verificar que el volumen existe
+# Verificar que los volúmenes existen
 docker volume ls
 
-# Ver información del volumen
-docker volume inspect 2025_tp02_docker_mysql_data
+# Ver información de volúmenes
+docker volume inspect 2025_tp02_docker_mysql_qa_data
+docker volume inspect 2025_tp02_docker_mysql_prod_data
 ```
 
 ---

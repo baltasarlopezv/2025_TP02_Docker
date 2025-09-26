@@ -1,21 +1,45 @@
 services:
-  # Base de datos MySQL (compartida entre QA y PROD)
-  mysql:
+  # Base de datos MySQL para QA
+  mysql-qa:
     image: mysql:8.0
-    container_name: mysql-db
+    container_name: mysql-qa
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword123
-      MYSQL_DATABASE: dockerapp
+      MYSQL_DATABASE: dockerapp_qa
       MYSQL_USER: appuser
       MYSQL_PASSWORD: apppassword123
     ports:
       - "3306:3306"
     volumes:
-      # Volumen persistente para datos de MySQL
-      - mysql_data:/var/lib/mysql
-      # Script de inicialización (opcional)
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # Volumen persistente para datos de MySQL QA
+      - mysql_qa_data:/var/lib/mysql
+      # Script de inicialización QA
+      - ./init-qa.sql:/docker-entrypoint-initdb.d/init-qa.sql:ro
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Base de datos MySQL para PROD
+  mysql-prod:
+    image: mysql:8.0
+    container_name: mysql-prod
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword456
+      MYSQL_DATABASE: dockerapp_prod
+      MYSQL_USER: produser
+      MYSQL_PASSWORD: prodpassword456
+    ports:
+      - "3307:3306"  # Puerto diferente para PROD
+    volumes:
+      # Volumen persistente para datos de MySQL PROD
+      - mysql_prod_data:/var/lib/mysql
+      # Script de inicialización PROD
+      - ./init-prod.sql:/docker-entrypoint-initdb.d/init-prod.sql:ro
     networks:
       - app-network
     healthcheck:
@@ -31,15 +55,15 @@ services:
     environment:
       - PORT=3000
       - ENVIRONMENT=QA
-      - DB_HOST=mysql
+      - DB_HOST=mysql-qa
       - DB_PORT=3306
       - DB_USER=appuser
       - DB_PASSWORD=apppassword123
-      - DB_NAME=dockerapp
+      - DB_NAME=dockerapp_qa
     ports:
       - "3000:3000"
     depends_on:
-      mysql:
+      mysql-qa:
         condition: service_healthy
     networks:
       - app-network
@@ -55,15 +79,15 @@ services:
     environment:
       - PORT=3000
       - ENVIRONMENT=PROD
-      - DB_HOST=mysql
+      - DB_HOST=mysql-prod
       - DB_PORT=3306
-      - DB_USER=appuser
-      - DB_PASSWORD=apppassword123
-      - DB_NAME=dockerapp
+      - DB_USER=produser
+      - DB_PASSWORD=prodpassword456
+      - DB_NAME=dockerapp_prod
     ports:
       - "3001:3000"  # Puerto externo 3001, interno 3000
     depends_on:
-      mysql:
+      mysql-prod:
         condition: service_healthy
     networks:
       - app-network
@@ -73,7 +97,9 @@ services:
 
 # Volúmenes persistentes
 volumes:
-  mysql_data:
+  mysql_qa_data:
+    driver: local
+  mysql_prod_data:
     driver: local
 
 # Red personalizada para que los contenedores se comuniquen
